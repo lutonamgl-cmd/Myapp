@@ -48,6 +48,7 @@ jobs:
 
     - name: Build APK
       run: |
+        buildozer android clean
         yes | buildozer android debug
 
     - name: Upload APK
@@ -55,4 +56,3 @@ jobs:
       with:
         name: MyAndroidApp
         path: bin/*.apk
-
