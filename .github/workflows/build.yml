@@ -1,58 +1,40 @@
-name: Build APK
+name: Build JSON
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+  schedule:
+    # * is a special character in YAML so you have to quote this string
+    - cron:  '0 * * * *'
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+
+    runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Python
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.12
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
-
-    - name: Install Android SDK Dependencies
+        python-version: '3.12'
+    - name: Install dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          build-essential \
-          git \
-          python3-dev \
-          libsqlite3-dev \
-          sqlite3 \
-          bzip2 \
-          libbz2-dev \
-          libssl-dev \
-          openssl \
-          libgdbm-dev \
-          libgdbm-compat-dev \
-          liblzma-dev \
-          libreadline-dev \
-          libncursesw5-dev \
-          libffi-dev \
-          uuid-dev \
-          libgmp-dev \
-          libmpfr-dev \
-          libmpc-dev
-
-    - name: Install Buildozer and Cython
+        python -m pip install --upgrade pip
+        pip install PyGithub
+    - name: Run script and commit changes
       run: |
-        pip install --upgrade pip
-        pip install "buildozer>=1.5.0" "cython<3.0.0"
+        python release.py
+        echo "Setting up git credentials..."
+        git remote set-url origin https://x-access-token:"$GITHUB_TOKEN"@github.com/"$GITHUB_REPOSITORY".git
+        git config --global user.email "actions@github.com"
+        git config --global user.name "actions"
+        echo "Git credentials configured."
 
-    - name: Force Stable Python Version and Build
-      run: |
-        export APP_REQUIREMENTS="python3==3.11.1,kivy"
-        yes | buildozer android debug
+        git checkout main
+        git add .
+        git commit -m "Automatic update of data" && git push --set-upstream origin main || true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: MyAndroidApp
-        path: bin/*.apk
